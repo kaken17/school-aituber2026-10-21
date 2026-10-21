@@ -32,11 +32,11 @@ export default async function handler(req, res) {
     });
   }
 
-  const token = process.env.HF_TOKEN;
+  const token = process.env.OPENROUTER_API_KEY;
 
   if (!token) {
     return res.status(500).json({
-      error: "HF_TOKENが設定されていません。"
+      error: "OPENROUTER_API_KEYが設定されていません。"
     });
   }
 
@@ -73,15 +73,16 @@ export default async function handler(req, res) {
     }
 
     const response = await fetch(
-      "https://router.huggingface.co/v1/chat/completions",
+      "https://openrouter.ai/api/v1/chat/completions",
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "X-OpenRouter-Title": "学校紹介AI"
         },
         body: JSON.stringify({
-          model: "Qwen/Qwen2.5-7B-Instruct-1M:fastest",
+          model: "openrouter/free",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             ...messages
@@ -92,22 +93,37 @@ export default async function handler(req, res) {
       }
     );
 
-    if (!response.ok) {
-      const details = await response.text();
+    const raw = await response.text();
+    let result;
 
+    try {
+      result = JSON.parse(raw);
+    } catch {
       console.error(
-        "Hugging Face error:",
+        "OpenRouter returned non-JSON:",
         response.status,
-        details.slice(0, 500)
+        raw.slice(0, 300)
+      );
+
+      return res.status(502).json({
+        error: "AIサービスから正しい応答を取得できませんでした。"
+      });
+    }
+
+    if (!response.ok) {
+      console.error(
+        "OpenRouter error:",
+        response.status,
+        JSON.stringify(result).slice(0, 1000)
       );
 
       return res.status(502).json({
         error:
-          "AIサービスに接続できませんでした。Hugging Faceのトークン、モデルの利用可否、利用枠を確認してください。"
+          result.error?.message ||
+          "OpenRouterへの接続に失敗しました。APIキー、無料枠、モデルの利用可否を確認してください。"
       });
     }
 
-    const result = await response.json();
     const answer = result.choices?.[0]?.message?.content;
 
     if (typeof answer !== "string" || !answer.trim()) {
