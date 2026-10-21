@@ -113,13 +113,37 @@ async function askAI(question) {
       })
     });
 
-    const data = await response.json();
+  
+const contentType = response.headers.get("content-type") || "";
+const responseText = await response.text();
 
-    if (!response.ok) {
-      throw new Error(
-        data.error || "AIとの通信に失敗しました。"
-      );
-    }
+let data;
+
+if (contentType.includes("application/json")) {
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    console.error("JSON解析エラー:", responseText.slice(0, 500));
+    throw new Error("サーバーから正しいJSONが返されませんでした。");
+  }
+} else {
+  console.error(
+    "APIがHTMLなどを返しました:",
+    response.status,
+    responseText.slice(0, 500)
+  );
+
+  throw new Error(
+    `APIの応答形式が正しくありません（HTTP ${response.status}）。Vercelのデプロイとログを確認してください。`
+  );
+}
+
+if (!response.ok) {
+  throw new Error(
+    data.error || "AIとの通信に失敗しました。"
+  );
+}
+
 
     if (typeof data.answer !== "string" || !data.answer.trim()) {
       throw new Error("AIから回答が返ってきませんでした。");
