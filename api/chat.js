@@ -81,7 +81,7 @@ export default async function handler(req, res) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "Qwen/Qwen2.5-7B-Instruct",
+          model: "Qwen/Qwen2.5-7B-Instruct-1M:fastest",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             ...messages
